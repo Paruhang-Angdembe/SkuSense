@@ -1,27 +1,9 @@
-# Terraform working directory
-**/.terraform/*
-
-# Local Terraform state
-*.tfstate
-*.tfstate.backup
-
-# Generated plan file
-tfplan
-
-# Crash logs
-crash.log
-
-# CLI config files
-.terraformrc
-terraform.rc
-
-# Python virtual environment
-.venv/
+# Terraform cache & state
 **/.terraform/*
 *.tfstate
 *.tfstate.backup
 tfplan
-crash.log
-.terraformrc
-terraform.rc
+.terraform.lock.hcl
+
+# Python venv
 .venv/
