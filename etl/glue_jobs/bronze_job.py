@@ -18,7 +18,7 @@ OUTPUT_PATH = f"s3://{BUCKET}/bronze/"
 # Read raw table
 df = spark.table(f"{DATABASE}.{RAW_TABLE}")
 
-# Deduplicate: pick highest qty_on_hand per (roduct_id, load_dt)
+# Deduplicate: pick highest qty_on_hand per (product_id, load_dt)
 window = Window.partitionBy("product_id", "load_dt").orderBy(desc("qty_on_hand"))
 df_dedup = (df
             .withColumn("rn", row_number().over(window))
