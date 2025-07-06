@@ -50,15 +50,8 @@ resource "aws_iam_policy" "glue_s3_access" {
       #-----Glue Catalog access
       {
         Action = [
-          # read / write
-          "glue:GetDatabase",
-          "glue:GetDatabases",
-          "glue:CreateDatabase",         # ← NEW
-          "glue:DeleteDatabase",         # safe cleanup
-          "glue:GetTable",
-          "glue:CreateTable",
-          "glue:UpdateTable",
-          "glue:DeleteTable"
+          "glue:StartJobRun",
+          "glue:GetJobRun"
         ],
         Effect = "Allow",
         Resource = [
