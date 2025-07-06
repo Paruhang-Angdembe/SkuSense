@@ -22,6 +22,7 @@ resource "aws_iam_policy" "glue_s3_access" {
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
+      #-----S3 Access
       {
         Action   = [
           "s3:GetObject",
@@ -31,9 +32,12 @@ resource "aws_iam_policy" "glue_s3_access" {
         Effect   = "Allow",
         Resource = [
           aws_s3_bucket.raw_data.arn,
-          "${aws_s3_bucket.raw_data.arn}/*"
+          "${aws_s3_bucket.raw_data.arn}/*",
+          "${aws_s3_bucket.raw_data.arn}/bronze/*",
+          "${aws_s3_bucket.raw_data.arn}/silver/*",
         ]
       },
+      #-----CloudWatch Logs
       {
         Action = [
           "logs:CreateLogGroup",
@@ -43,20 +47,23 @@ resource "aws_iam_policy" "glue_s3_access" {
         Effect = "Allow",
         Resource = "arn:aws:logs:*:${data.aws_caller_identity.current.account_id}:log-group:/aws-glue/*"
       },
+      #-----Glue Catalog access
       {
         Action = [
-          "glue:GetDatabase",
-          "glue:GetDatabases",
-          "glue:CreateTable",
-          "glue:UpdateTable",
-          "glue:GetTable",
-          "glue:DeleteTable"
+          "glue:StartJobRun",
+          "glue:GetJobRun"
         ],
         Effect = "Allow",
         Resource = [
+          # whole catalog for CreateDatabase
           "arn:aws:glue:*:${data.aws_caller_identity.current.account_id}:catalog",
+
+          # explicit project DBs
           "arn:aws:glue:*:${data.aws_caller_identity.current.account_id}:database/skusense_raw_db",
-          "arn:aws:glue:*:${data.aws_caller_identity.current.account_id}:table/skusense_raw_db/*"
+          "arn:aws:glue:*:${data.aws_caller_identity.current.account_id}:table/skusense_raw_db/*",
+
+          # allow the default DB probe
+          "arn:aws:glue:*:${data.aws_caller_identity.current.account_id}:database/default"
         ]
       },
       {
@@ -70,7 +77,7 @@ resource "aws_iam_policy" "glue_s3_access" {
           "arn:aws:s3:::aws-glue-assets-${data.aws_caller_identity.current.account_id}-us-east-1",
           "arn:aws:s3:::aws-glue-assets-${data.aws_caller_identity.current.account_id}-us-east-1/*"
         ]
-      }
+      },
     ]
   })
 }
