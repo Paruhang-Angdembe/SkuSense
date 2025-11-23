@@ -27,16 +27,17 @@ SkuSense is a production-ready data platform that:
 
 ## 🛠️ Project Status
 
-**Current Phase: Silver Layer Development**  
-- ✅ S3 ingestion & Glue crawler setup  
-- ✅ Bronze layer (Iceberg ACID tables)  
-- 🔄 Silver layer (risk calculations & enrichment)  
-- ⬜️ Snowflake integration & dbt models  
-- ⬜️ Step Functions orchestration  
-- ⬜️ Production deployment & monitoring
+## 🚦 Pipeline Progress
 
-> _Updated: June 2025 • Next milestone: Silver layer completion_
+- [x] **S3 ingestion & Glue crawler**  
+- [x] **Bronze layer** (Dedupe → Iceberg ACID table)  
+- [x] **Silver layer** (Stock‐out risk metrics → Iceberg table)  
+- [x] **Step Functions orchestration** (Bronze → Silver with retries, logging)  
+- [ ] **Snowflake external table & dbt Models**  
+- [ ] **CI/CD + Monitoring** (GitHub Actions, alerts, dashboards)
 
+
+> _Updated: July 2025
 ---
 
 ## 🏗️ Architecture
