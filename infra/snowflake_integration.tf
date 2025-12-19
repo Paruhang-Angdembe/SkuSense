@@ -9,12 +9,12 @@ resource "aws_iam_role" "snowflake_integration_role" {
     {
       "Effect": "Allow",
       "Principal": {
-        "AWS": "arn:aws:iam::375609200837:user/gds11000-s"
-      },
+        "AWS": "arn:aws:iam::250260913919:user/edx91000-s"
+        },
       "Action": "sts:AssumeRole",
       "Condition": {
         "StringEquals": {
-          "sts:ExternalId": "RM39814_SFCRole=4_D2/p8sg4w1pMi9V9GPD6H2MI86s="
+          "sts:ExternalId": "LG51718_SFCRole=2_AZ1GcaL+0EnIpEwR0K59OlXS8e8="
         }
       }
     }
@@ -30,12 +30,16 @@ resource "aws_iam_policy" "snowflake_s3_access" {
     Version = "2012-10-17",
     Statement = [{
       Effect   = "Allow",
-      Action   = ["s3:GetObject","s3:PutObject","s3:ListBucket"],
+      Action   = [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:ListBucket"
+        ],
       Resource = [
-        aws_s3_bucket.raw_data.arn,
-        "${aws_s3_bucket.raw_data.arn}/*",
-        "${aws_s3_bucket.raw_data.arn}/bronze/*",
-        "${aws_s3_bucket.raw_data.arn}/silver/*",
+        "arn:aws:s3:::${aws_s3_bucket.raw_data.bucket}",
+        "arn:aws:s3:::${aws_s3_bucket.raw_data.bucket}/*",
+        "arn:aws:s3:::${aws_s3_bucket.raw_data.bucket}/bronze/*",
+        "arn:aws:s3:::${aws_s3_bucket.raw_data.bucket}/silver/*",
       ]
     }]
   })
