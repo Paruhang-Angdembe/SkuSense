@@ -7,3 +7,12 @@ tfplan
 
 # Python venv
 .venv/
+
+# dbt (local / generated)
+dbt/profiles.yml
+dbt/target/
+dbt/logs/
+
+# Project logs
+logs/
+
