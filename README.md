@@ -1,307 +1,200 @@
-# SkuSense - AI-Powered Inventory Risk Detection
+# SkuSense - Inventory Risk Analytics Platform (AWS-Native)
 
-**🎯 Predict supply-chain stockouts 7+ days in advance**  
-A serverless, cloud-native data platform built on AWS that transforms raw inventory data into actionable risk intelligence using Apache Iceberg, Snowflake, and modern data engineering practices.
+Identify stockout risk across warehouses using a fully serverless data platform
 
-[![AWS](https://img.shields.io/badge/AWS-FF9900?style=flat&logo=amazon-aws&logoColor=white)](https://aws.amazon.com/)
-[![Apache Iceberg](https://img.shields.io/badge/Apache_Iceberg-326CE5?style=flat&logo=apache&logoColor=white)](https://iceberg.apache.org/)
-[![Snowflake](https://img.shields.io/badge/Snowflake-29B5E8?style=flat&logo=snowflake&logoColor=white)](https://www.snowflake.com/)
-[![dbt](https://img.shields.io/badge/dbt-FF694B?style=flat&logo=dbt&logoColor=white)](https://www.getdbt.com/)
-[![Terraform](https://img.shields.io/badge/Terraform-623CE4?style=flat&logo=terraform&logoColor=white)](https://www.terraform.io/)
+An end-to-end AWS-native analytics system that transforms raw inventory snapshots into warehouse-level stockout risk insights, modeled using dbt and visualized through a QuickSight dashboard.
+
+## 🎯 Problem
+Inventory stockouts lead to:
+	-	Lost revenue
+	-   Poor customer experience
+	-   Inefficient replenishment decisions
+
+Most systems track inventory levels but fail to:
+	-	Model risk over time
+	-	Identify which products need immediate action
+	-	Provide warehouse-level visibility
+
+---
+## 💡 Solution
+
+SkuSense models inventory as a time-series warehouse dataset, enabling:
+	-	Tracking of stockout risk trends over time
+	-	Identification of critical and low-stock SKUs
+	-	Prioritization of high-risk products
+	-	Comparison of risk across warehouses
+---
+
+## 🏗️ Architecture (AWS-Native)
+### Pipeline Flow
+
+1. **Ingestion**
+   - Raw CSV inventory snapshots uploaded to S3
+
+2. **Processing (Glue + Iceberg)**
+   - Bronze: cleaned + deduplicated data  
+   - Silver: daily inventory snapshot table  
+
+3. **Warehouse Modeling (dbt + Athena)**
+   - Star schema built with:
+     - `fct_inventory_risk`
+     - `dim_product`
+     - `dim_warehouse`
+     - `dim_date`
+   - Business logic implemented in SQL
+
+4. **Consumption Layer (QuickSight)**
+   - Dashboard for inventory risk monitoring
 
 ---
 
-## 🚀 What This Project Does
+## 📊 Data Model
 
-SkuSense is a production-ready data platform that:
+### Fact Table
 
-- **Ingests** raw inventory CSV files into a scalable S3 data lake
-- **Processes** data through Bronze → Silver layers using Apache Iceberg for ACID compliance
-- **Analyzes** risk patterns using Snowflake external tables and dbt transformations
-- **Alerts** stakeholders automatically when stockout risk exceeds thresholds
-- **Orchestrates** end-to-end pipelines with AWS Step Functions
+**`fct_inventory_risk`**
 
-**Business Impact**: Reduces inventory costs by 15-25% while preventing stockouts through predictive analytics.
+**Grain:**
+> One row per `snapshot_date`, `product_id`, `warehouse_id`
+
+**Key Metrics:**
+- `qty_on_hand`
+- `inventory_delta`
+- `daily_units_sold_proxy`
+- `avg_daily_usage_7d`
+- `days_until_stockout`
+- `stock_status`
+- `reorder_flag`
 
 ---
 
-## 🛠️ Project Status
+### Dimensions
 
-## 🚦 Pipeline Progress
+- `dim_product`
+- `dim_warehouse`
+- `dim_date`
 
-- [x] **S3 ingestion & Glue crawler**  
-- [x] **Bronze layer** (Dedupe → Iceberg ACID table)  
-- [x] **Silver layer** (Stock‐out risk metrics → Iceberg table)  
-- [x] **Step Functions orchestration** (Bronze → Silver with retries, logging)  
-- [ ] **Snowflake external table & dbt Models**  
-- [ ] **CI/CD + Monitoring** (GitHub Actions, alerts, dashboards)
-
-
-> _Updated: July 2025
 ---
 
-## 🏗️ Architecture
+## 📈 Key Metrics
 
-```mermaid
-flowchart TB
-    subgraph "Data Ingestion"
-        A[CSV Files] -->|S3 Upload| B[Raw Layer]
-        B -->|Glue Crawler| C[Data Catalog]
-    end
-    
-    subgraph "Data Processing"
-        C -->|Bronze Job| D[Iceberg Bronze]
-        D -->|Silver Job| E[Iceberg Silver]
-    end
-    
-    subgraph "Analytics & ML"
-        E -->|External Tables| F[Snowflake]
-        F -->|dbt| G[Risk Models]
-        G --> H[Dashboards]
-    end
-    
-    subgraph "Orchestration"
-        I[Step Functions] --> J[Glue Jobs]
-        I --> K[dbt Runner]
-        I --> L[Alert Lambda]
-        L --> M[SNS/Slack]
-    end
-    
-    style D fill:#e1f5fe
-    style E fill:#e8f5e8
-    style G fill:#fff3e0
-```
+- **Critical SKUs** → products with ≤ 7 days until stockout  
+- **Low Stock SKUs** → products with ≤ 14 days until stockout  
+- **Warehouses with Critical Risk** → warehouses containing at least one critical SKU  
+- **Average Days Until Stockout** → average across latest snapshot  
+
+---
+
+## 🔗 Lineage Graph
+![Lineage Graph](image-3.png)
+
+## 📊 Dashboard (QuickSight)
+
+![Dashboard](dashboard.png)
+
+### KPI Overview
+
+![alt text](kpi.png)
+
+- Critical SKUs
+- Low Stock SKUs
+- Warehouses at Risk
+- Average Days Until Stockout
+
+### Visualizations
+
+- **Risk Trend Over Time**
+![alt text](image-1.png)
+  - Tracks number of critical and low-stock SKUs daily
+
+- **Warehouse Risk Distribution**
+![alt text](image.png)
+  - Compares inventory risk across warehouses
+
+- **Top Products at Risk**
+![alt text](image-2.png)
+  - Highlights products with lowest days until stockout
+
+### Filters
+- Warehouse  
+- Product Category  
+- Date Range  
+
+---
+
+## 🧠 Analytics Logic (dbt)
+
+All business logic is implemented in SQL using dbt:
+
+- Window functions (`LAG`, rolling averages)
+- Inventory movement classification
+- Risk categorization using thresholds
+- Derived KPIs for reporting
+
+---
+
+## ✅ Data Quality
+
+Implemented using dbt tests:
+
+- Grain validation (`snapshot_date + product_id + warehouse_id`)
+- Non-null constraints
+- Relationship tests between fact and dimensions
+- Accepted values for stock status
+- Non-negative checks for inventory metrics
 
 ---
 
 ## 🛠️ Technology Stack
 
-| Layer | Technology | Purpose |
-|-------|------------|---------|
-| **Compute** | AWS Glue 4.0, Apache Spark | Serverless ETL processing |
-| **Storage** | S3, Apache Iceberg | ACID-compliant data lake |
-| **Catalog** | AWS Glue Data Catalog | Metadata management |
-| **Analytics** | Snowflake, dbt Core | Data warehouse & transformations |
-| **Orchestration** | AWS Step Functions, Lambda | Workflow automation |
-| **Infrastructure** | Terraform, GitHub Actions | IaC & CI/CD |
-| **Monitoring** | CloudWatch, SNS | Observability & alerting |
+| Layer | Technology |
+|------|----------|
+| Storage | Amazon S3 |
+| Processing | AWS Glue (PySpark) |
+| Table Format | Apache Iceberg |
+| Catalog | AWS Glue Catalog |
+| Query Engine | Amazon Athena |
+| Transformation | dbt (dbt-athena) |
+| BI | Amazon QuickSight |
+| Infrastructure | Terraform |
 
 ---
 
-## 📊 Key Features
+## 🚀 How to Run
 
-### 🔄 **ACID-Compliant Data Lake**
-- Apache Iceberg tables with time travel capabilities
-- Schema evolution without breaking downstream consumers
-- Optimized file layouts for query performance
-
-### 📈 **Predictive Risk Models**
-- Calculate `days_until_stockout` based on consumption patterns
-- Inventory turnover ratio analysis
-- Configurable risk thresholds and alerting
-
-### ⚡ **Serverless Architecture**
-- Auto-scaling compute with AWS Glue
-- Pay-per-use pricing model
-- Zero infrastructure management
-
-### 🔍 **Data Quality & Governance**
-- dbt tests for data validation
-- Automated documentation generation
-- Data lineage tracking
-
----
-
-## 🚀 Quick Start
-
-### Prerequisites
-- AWS CLI configured with appropriate permissions
-- Terraform >= 1.0
-- Python 3.9+
-- dbt-core and dbt-snowflake
-
-### 1. Clone & Setup
-```bash
-git clone https://github.com/yourusername/skusense.git
-cd skusense
-
-# Set your environment variables
-export AWS_REGION="us-east-1"
-export BUCKET_NAME="your-skusense-bucket"
-```
-
-### 2. Deploy Infrastructure
+### 1. Deploy Infrastructure
 ```bash
 cd infra
 terraform init
-terraform plan -var="bucket_name=${BUCKET_NAME}"
 terraform apply
-```
+** Upload Data **
+aws s3 cp sample_data/ s3://<your-bucket>/raw/ --recursive
 
-### 3. Upload Sample Data
-```bash
-aws s3 cp sample_data/ s3://${BUCKET_NAME}/raw/ --recursive
-```
-
-### 4. Run Initial Pipeline
-```bash
-# Trigger the Step Function
+** Run Pipeline **
 aws stepfunctions start-execution \
-  --state-machine-arn $(terraform output -raw step_function_arn) \
+  --state-machine-arn <state-machine-arn> \
   --input '{}'
-```
 
-### 5. View Results
-```bash
-# Check Snowflake
+** Build Warehouse Models **
 cd dbt
-dbt run --profiles-dir .
+dbt run
 dbt test
-dbt docs generate && dbt docs serve
+
+** Query via Athena/Visualize in QuickSight
 ```
-
 ---
-
-## 📁 Project Structure
-
-```
-skusense/
-├── 📂 etl/
-│   ├── glue_jobs/
-│   │   ├── bronze_job.py      # Raw → Bronze transformation
-│   │   └── silver_job.py      # Bronze → Silver enrichment
-│   └── sample_data/           # Test CSV files
-├── 📂 dbt/
-│   ├── models/
-│   │   ├── marts/
-│   │   │   └── mart_stockout_risk.sql
-│   │   └── staging/
-│   └── tests/
-├── 📂 infra/
-│   ├── main.tf               # Core infrastructure
-│   ├── glue.tf              # Glue jobs & crawler
-│   ├── step_functions.tf    # Orchestration
-│   └── iam.tf               # Permissions
-├── 📂 lambdas/
-│   └── alert_handler/        # SNS/Slack notifications
-└── 📂 docs/
-    └── architecture.md       # Detailed architecture docs
-```
-
+## 📌 Key Learnings
+-	Importance of data grain correctness in analytics systems
+-	Separation of data processing (Glue) vs business logic (dbt)
+-	Building a star schema for BI consumption
+-	Implementing data quality checks in analytics pipelines
+-	Designing end-to-end analytics workflows on AWS
 ---
-
-## 🔧 Configuration
-
-### Environment Variables
-```bash
-# Required
-export AWS_REGION="us-east-1"
-export BUCKET_NAME="your-bucket-name"
-export SNOWFLAKE_ACCOUNT="your-account"
-
-# Optional
-export SLACK_WEBHOOK_URL="https://hooks.slack.com/..."
-export ALERT_EMAIL="alerts@yourcompany.com"
-```
-
-### Job Parameters
-Key AWS Glue job parameters used:
-- `--datalake-formats: iceberg`
-- `--BUCKET: your-bucket-name`
-- AWS Glue Version: 4.0
-- Worker Type: G.1X (recommended for Iceberg workloads)
-
+## 🎯 Project Focus
+This project demonstrates:
+	-	Analytics Engineering (dbt + modeling)
+	-	Data Engineering fundamentals (Glue, Iceberg, pipelines)
+	-	BI/Reporting (QuickSight dashboard)
+	-	End-to-end data product thinking
 ---
-
-## 📈 Performance & Scaling
-
-### Optimizations Applied
-- **Iceberg table optimization**: Automatic file compaction
-- **Partitioning strategy**: By date and product category
-- **Glue Auto Scaling**: Dynamic worker allocation
-- **S3 multipart uploads**: Parallel data loading
-
-### Scaling Characteristics
-- Processes **millions of records** per run
-- Scales from **2-100 Glue workers** automatically
-- **Sub-second** query performance in Snowflake
-- **<5 minute** end-to-end pipeline execution
-
----
-
-## 🐛 Troubleshooting
-
-### Common Issues & Solutions
-
-| Problem | Solution |
-|---------|----------|
-| `iceberg is not a valid Spark SQL Data Source` | Ensure `--datalake-formats: iceberg` parameter is set |
-| `GlueArgumentError: --BUCKET required` | Add `--BUCKET` to job parameters in Glue console |
-| `Invalid input to --conf` | Use programmatic Spark config instead of job parameters |
-| IAM permission errors | Check CloudTrail logs and update IAM policies |
-
-### Debug Commands
-```bash
-# Check Glue job logs
-aws logs describe-log-groups --log-group-name-prefix "/aws-glue"
-
-# Validate Iceberg table
-aws glue get-table --database-name skusense_bronze_db --name inventory_bronze
-
-# Test Snowflake connection
-dbt debug --profiles-dir .
-```
-
----
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-### Development Setup
-```bash
-# Install dependencies
-pip install -r requirements-dev.txt
-pre-commit install
-
-# Run tests
-pytest tests/
-dbt test --profiles-dir .
-```
-
----
-
-## 📚 Additional Resources
-
-- [📖 Architecture Deep Dive](docs/architecture.md)
-- [🔧 Deployment Guide](docs/deployment.md)
-- [📊 dbt Documentation](https://your-bucket.s3.amazonaws.com/dbt-docs/index.html)
-- [🎥 Demo Video](https://loom.com/your-demo-link)
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 👤 About
-
-Built by [Your Name](https://github.com/yourusername) as part of AWS Data Engineer certification preparation.
-
-**Looking for a Data Engineer?** Check out my [portfolio](https://yourportfolio.com) and [LinkedIn](https://linkedin.com/in/yourprofile).
-
----
-
-<div align="center">
-
-**⭐ Star this repo if it helped you learn modern data engineering!**
-
-[Report Bug](https://github.com/yourusername/skusense/issues) • [Request Feature](https://github.com/yourusername/skusense/issues) • [LinkedIn](https://linkedin.com/in/yourprofile)
-
-</div>
+Built By Paruhang Angdembe :)

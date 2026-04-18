@@ -1,0 +1,25 @@
+version: 2
+
+sources:
+  - name: skusense_silver
+    description: "Glue Catalog Iceberg Silver inventory snapshot table queried through Athena."
+    database: awsdatacatalog
+    schema: skusense_silver_db
+    tables:
+      - name: inventory_silver
+        description: "Clean Silver inventory snapshot table produced by Glue."
+        columns:
+          - name: product_id
+            description: "Product SKU identifier."
+            tests:
+              - not_null
+          - name: warehouse_id
+            description: "Warehouse identifier."
+            tests:
+              - not_null
+          - name: load_dt
+            description: "Snapshot load date from the Glue Silver layer."
+            tests:
+              - not_null
+          - name: qty_on_hand
+            description: "Current on-hand quantity for the product in the warehouse snapshot."
