@@ -4,18 +4,66 @@
 # if the table doesn't exist yet, .mode("append") make Spark
 # Create it automatically; future runs can switch to "overwrite"
 
+import argparse
 import sys
-from awsglue.context import GlueContext
-from awsglue.utils import getResolvedOptions
-from awsglue.job import Job
-from pyspark.context import SparkContext
-from pyspark.sql import SparkSession
+
+try:
+    from awsglue.context import GlueContext
+    from awsglue.utils import getResolvedOptions
+    from awsglue.job import Job
+    LOCAL_GLUE_RUNTIME = False
+except ModuleNotFoundError as exc:
+    if exc.name != "awsglue":
+        raise
+
+    LOCAL_GLUE_RUNTIME = True
+
+    class GlueContext:
+        def __init__(self, spark_context):
+            self.spark_context = spark_context
+
+    class Job:
+        def __init__(self, glue_context):
+            self.glue_context = glue_context
+
+        def init(self, *_args, **_kwargs):
+            return None
+
+        def commit(self):
+            return None
+
+    def getResolvedOptions(argv, options):
+        parser = argparse.ArgumentParser(
+            description="Run the Bronze Glue job outside the managed AWS Glue runtime."
+        )
+        parser.add_argument("--JOB_NAME", default="bronze_job_local")
+        parser.add_argument("--BUCKET")
+        known_args, _ = parser.parse_known_args(argv[1:])
+        values = vars(known_args)
+        missing = [name for name in options if not values.get(name)]
+        if missing:
+            parser.error(f"missing required arguments: {', '.join(f'--{name}' for name in missing)}")
+        return {name: values[name] for name in options}
+
+try:
+    from pyspark.sql import SparkSession
+except ModuleNotFoundError as exc:
+    if exc.name != "pyspark":
+        raise
+    raise SystemExit(
+        "pyspark is not installed in this environment. "
+        "Run this job in the AWS Glue Docker image or install a compatible Spark runtime first."
+    ) from exc
+
 from pyspark.sql import functions as F
 from pyspark.sql.window import Window
 
 # Get job arguments
 args = getResolvedOptions(sys.argv, ["JOB_NAME", "BUCKET"])
 BUCKET = args["BUCKET"]
+
+if LOCAL_GLUE_RUNTIME:
+    print("INFO: awsglue is unavailable; using local stubs. Pass --JOB_NAME/--BUCKET explicitly when running outside AWS Glue.")
 
 # CRITICAL: Configure Spark with Iceberg extensions (same as Silver job)
 spark = SparkSession.builder \
@@ -45,9 +93,10 @@ try:
     df_raw = spark.table(f"{RAW_DB}.{RAW_TABLE}")
     print(f"Raw record count: {df_raw.count()}")
     
-    # Deduplicate per (product_id, load_dt)
-    w = Window.partitionBy("product_id", "load_dt").orderBy(F.desc("qty_on_hand"))
-    df_dedup = (df_raw
+    # Deduplicate per (product_id, warehouse_id, load_dt)
+    w = Window.partitionBy("product_id", "warehouse_id", "load_dt").orderBy(F.desc("qty_on_hand"))
+    df_dedup = (
+        df_raw
         .withColumn("rn", F.row_number().over(w))
         .filter(F.col("rn") == 1)
         .drop("rn")

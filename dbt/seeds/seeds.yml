@@ -1,0 +1,21 @@
+version: 2
+
+seeds:
+  - name: product_master
+    description: "Seeded reference data for products used to build dim_product."
+    columns:
+      - name: product_id
+        description: "Product SKU identifier."
+        tests:
+          - not_null
+          - unique
+
+      - name: product_name
+        description: "Human-readable product name."
+        tests:
+          - not_null
+
+      - name: category
+        description: "Product category."
+        tests:
+          - not_null

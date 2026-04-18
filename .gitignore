@@ -7,6 +7,8 @@ tfplan
 
 # Python venv
 .venv/
+__pycache__/
+*.pyc
 
 # dbt (local / generated)
 dbt/profiles.yml
@@ -15,4 +17,3 @@ dbt/logs/
 
 # Project logs
 logs/
-

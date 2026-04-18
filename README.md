@@ -1,169 +1,200 @@
-# SkuSense - Inventory Risk Analytics Data Platform
+# SkuSense - Inventory Risk Analytics Platform (AWS-Native)
 
-A modern, cloud-native **data engineering and analytics platform** that transforms raw inventory data into structured, analytics-ready risk signals using AWS, Apache Iceberg, Snowflake, and dbt.
+Identify stockout risk across warehouses using a fully serverless data platform
 
-**Status:** Active development — Gold layer in progress
+An end-to-end AWS-native analytics system that transforms raw inventory snapshots into warehouse-level stockout risk insights, modeled using dbt and visualized through a QuickSight dashboard.
 
-[![AWS](https://img.shields.io/badge/AWS-FF9900?style=flat&logo=amazon-aws&logoColor=white)](https://aws.amazon.com/)
-[![Apache Iceberg](https://img.shields.io/badge/Apache_Iceberg-326CE5?style=flat&logo=apache&logoColor=white)](https://iceberg.apache.org/)
-[![Snowflake](https://img.shields.io/badge/Snowflake-29B5E8?style=flat&logo=snowflake&logoColor=white)](https://www.snowflake.com/)
-[![dbt](https://img.shields.io/badge/dbt-FF694B?style=flat&logo=dbt&logoColor=white)](https://www.getdbt.com/)
-[![Terraform](https://img.shields.io/badge/Terraform-623CE4?style=flat&logo=terraform&logoColor=white)](https://www.terraform.io/)
+## 🎯 Problem
+Inventory stockouts lead to:
+	-	Lost revenue
+	-   Poor customer experience
+	-   Inefficient replenishment decisions
 
----
-## 🎯 What This Project Does (Current State)
-
-SkuSense is a production-style **data platform** that:
-
-- Ingests raw inventory CSV data into an Amazon S3 data lake
-- Processes data through **Bronze → Silver layers** using **Apache Iceberg** for ACID compliance
-- Orchestrates end-to-end pipelines with **AWS Step Functions**
-- Exposes curated Silver data to **Snowflake via external tables**
-- Applies analytics transformations using **dbt (source → staging)**
-
-The focus of this project is **data modeling, reliability, and analytics readiness**, not just standalone ETL scripts.
+Most systems track inventory levels but fail to:
+	-	Model risk over time
+	-	Identify which products need immediate action
+	-	Provide warehouse-level visibility
 
 ---
+## 💡 Solution
 
-## 🛠️ Current Project Status
+SkuSense models inventory as a time-series warehouse dataset, enabling:
+	-	Tracking of stockout risk trends over time
+	-	Identification of critical and low-stock SKUs
+	-	Prioritization of high-risk products
+	-	Comparison of risk across warehouses
+---
 
-### ✅ Completed
+## 🏗️ Architecture (AWS-Native)
+### Pipeline Flow
 
-- S3 raw data ingestion
-- AWS Glue crawler
-- Bronze layer: deduplication → Iceberg ACID table
-- Silver layer: inventory risk metrics → Iceberg table
-- Step Functions orchestration (Bronze → Silver)
-  - retries
-  - timeouts
-  - CloudWatch logging
-- Snowflake storage integration & external stage
-- Snowflake external table over Silver Iceberg data
-- Snowflake view to flatten VARIANT data into typed columns
-- dbt:
-  - source definitions
-  - source tests
-  - staging model (`stg_inventory_silver`) with tests
+1. **Ingestion**
+   - Raw CSV inventory snapshots uploaded to S3
 
-### 🚧 In Progress (Next)
+2. **Processing (Glue + Iceberg)**
+   - Bronze: cleaned + deduplicated data  
+   - Silver: daily inventory snapshot table  
 
-- dbt **Intermediate models** (business logic & risk classification)
-- dbt **Gold marts** (fact & dimension tables)
+3. **Warehouse Modeling (dbt + Athena)**
+   - Star schema built with:
+     - `fct_inventory_risk`
+     - `dim_product`
+     - `dim_warehouse`
+     - `dim_date`
+   - Business logic implemented in SQL
 
-### ⏳ Planned
+4. **Consumption Layer (QuickSight)**
+   - Dashboard for inventory risk monitoring
 
-- Monitoring & alerting (CloudWatch alarms, SNS)
-- CI/CD (GitHub Actions for Terraform + dbt)
-- Analytics dashboard (Streamlit or Metabase)
-- dbt documentation site
+---
 
-## 🏗️ Architecture
-> Note: Gold (intermediate and marts) models are currently under development and are intentionally excluded from the current architecture diagram.
+## 📊 Data Model
 
-```mermaid
-flowchart TB
-    subgraph "Ingestion"
-        A[CSV Files] -->|S3 Upload| B[S3 Raw]
-        B -->|Glue Crawler| C[Glue Data Catalog]
-    end
+### Fact Table
 
-    subgraph "Lakehouse Processing"
-        C -->|Glue Bronze Job| D[Iceberg Bronze]
-        D -->|Glue Silver Job| E[Iceberg Silver]
-    end
+**`fct_inventory_risk`**
 
-    subgraph "Orchestration"
-        F[AWS Step Functions] -->|Sync| D
-        F -->|Sync| E
-    end
+**Grain:**
+> One row per `snapshot_date`, `product_id`, `warehouse_id`
 
-    subgraph "Analytics Layer"
-        E -->|External Table| G[Snowflake]
-        G --> H[Snowflake View<br/>Typed & Validated]
-        H -->|dbt Source| I[dbt Staging]
-    end
+**Key Metrics:**
+- `qty_on_hand`
+- `inventory_delta`
+- `daily_units_sold_proxy`
+- `avg_daily_usage_7d`
+- `days_until_stockout`
+- `stock_status`
+- `reorder_flag`
 
-    style D fill:#e1f5fe
-    style E fill:#e8f5e8
-    style I fill:#fff3e0
+---
 
-```
+### Dimensions
+
+- `dim_product`
+- `dim_warehouse`
+- `dim_date`
+
+---
+
+## 📈 Key Metrics
+
+- **Critical SKUs** → products with ≤ 7 days until stockout  
+- **Low Stock SKUs** → products with ≤ 14 days until stockout  
+- **Warehouses with Critical Risk** → warehouses containing at least one critical SKU  
+- **Average Days Until Stockout** → average across latest snapshot  
+
+---
+
+## 🔗 Lineage Graph
+![Lineage Graph](image-3.png)
+
+## 📊 Dashboard (QuickSight)
+
+![Dashboard](dashboard.png)
+
+### KPI Overview
+
+![alt text](kpi.png)
+
+- Critical SKUs
+- Low Stock SKUs
+- Warehouses at Risk
+- Average Days Until Stockout
+
+### Visualizations
+
+- **Risk Trend Over Time**
+![alt text](image-1.png)
+  - Tracks number of critical and low-stock SKUs daily
+
+- **Warehouse Risk Distribution**
+![alt text](image.png)
+  - Compares inventory risk across warehouses
+
+- **Top Products at Risk**
+![alt text](image-2.png)
+  - Highlights products with lowest days until stockout
+
+### Filters
+- Warehouse  
+- Product Category  
+- Date Range  
+
+---
+
+## 🧠 Analytics Logic (dbt)
+
+All business logic is implemented in SQL using dbt:
+
+- Window functions (`LAG`, rolling averages)
+- Inventory movement classification
+- Risk categorization using thresholds
+- Derived KPIs for reporting
+
+---
+
+## ✅ Data Quality
+
+Implemented using dbt tests:
+
+- Grain validation (`snapshot_date + product_id + warehouse_id`)
+- Non-null constraints
+- Relationship tests between fact and dimensions
+- Accepted values for stock status
+- Non-negative checks for inventory metrics
 
 ---
 
 ## 🛠️ Technology Stack
 
-| Layer | Technology | Purpose |
-|-----|-----------|--------|
-| Compute | AWS Glue (Spark) | Serverless data processing |
-| Storage | Amazon S3, Apache Iceberg | ACID-compliant data lake |
-| Catalog | AWS Glue Data Catalog | Metadata management |
-| Orchestration | AWS Step Functions | Workflow orchestration |
-| Analytics | Snowflake | Query engine |
-| Transformations | dbt Core | Analytics modeling |
-| Infrastructure | Terraform | Infrastructure as Code |
-| Monitoring | CloudWatch | Logs & observability |
+| Layer | Technology |
+|------|----------|
+| Storage | Amazon S3 |
+| Processing | AWS Glue (PySpark) |
+| Table Format | Apache Iceberg |
+| Catalog | AWS Glue Catalog |
+| Query Engine | Amazon Athena |
+| Transformation | dbt (dbt-athena) |
+| BI | Amazon QuickSight |
+| Infrastructure | Terraform |
 
 ---
 
-## 📊 Metrics Currently Modeled (Silver Layer)
+## 🚀 How to Run
 
-- `product_id`
-- `warehouse_id`
-- `snapshot_date`
-- `qty_on_hand`
-- `avg_daily_usage`
-- `days_until_stockout`
-- `turnover_ratio`
-- `reorder_flag`
-- `stock_status`
+### 1. Deploy Infrastructure
+```bash
+cd infra
+terraform init
+terraform apply
+** Upload Data **
+aws s3 cp sample_data/ s3://<your-bucket>/raw/ --recursive
 
----
-## 🚀 Roadmap
+** Run Pipeline **
+aws stepfunctions start-execution \
+  --state-machine-arn <state-machine-arn> \
+  --input '{}'
 
-### Gold Layer (dbt)
-- Intermediate inventory risk modeling
-- Fact table: `fct_stockout_risk`
-- Dimensions: `dim_product`, `dim_warehouse`
-- dbt tests & documentation
+** Build Warehouse Models **
+cd dbt
+dbt run
+dbt test
 
-### Platform Enhancements
-- CI/CD (Terraform + dbt)
-- Alerting for critical stockout risk
-- Analytics dashboard
----
-
-## 📁 Project Structure
-
+** Query via Athena/Visualize in QuickSight
 ```
-skusense/
-├── etl/
-│ ├── glue_jobs/
-│ │ ├── bronze_job.py # Raw → Bronze transformation
-│ │ └── silver_job.py # Bronze → Silver enrichment
-│ └── sample_data/ # Test CSV files
-├── dbt/
-│ └── models/
-│ ├── staging/
-│ │ └── stg_inventory_silver.sql
-│ ├── intermediate/ # next: business logic & risk modeling
-│ └── marts/ # planned: fact & dimension tables
-├── infra/
-│ ├── main.tf # Core infrastructure
-│ ├── glue.tf # Glue jobs & crawler
-│ ├── step_functions.tf # Orchestration
-│ └── iam.tf # Permissions
-├── lambdas/ # planned: alerting & notifications
-└── docs/
-└── architecture.md # Architecture documentation
-```
-
 ---
-
-
-## 👤 About
-
-Built by [Paruhang Angdembe](https://github.com/Paruhang-Angdembe) as a flagship portfolio project to demonstrate modern
-data lakehouse architecture, analytics engineering, and cloud-native orchestration
-patterns aligned with AWS Data Engineer roles.
+## 📌 Key Learnings
+-	Importance of data grain correctness in analytics systems
+-	Separation of data processing (Glue) vs business logic (dbt)
+-	Building a star schema for BI consumption
+-	Implementing data quality checks in analytics pipelines
+-	Designing end-to-end analytics workflows on AWS
 ---
+## 🎯 Project Focus
+This project demonstrates:
+	-	Analytics Engineering (dbt + modeling)
+	-	Data Engineering fundamentals (Glue, Iceberg, pipelines)
+	-	BI/Reporting (QuickSight dashboard)
+	-	End-to-end data product thinking
+---
+Built By Paruhang Angdembe :)

@@ -3,23 +3,64 @@
 # and writes out an Iceberg Silver table.
 # Fixed version with proper Iceberg configuration
 import sys
-from awsglue.context import GlueContext
-from awsglue.utils import getResolvedOptions
-from awsglue.job import Job
-from pyspark.context import SparkContext
-from pyspark.sql import SparkSession, functions as F
-from pyspark.sql.window import Window
+import argparse
 
-# Get job arguments - handle optional BUCKET parameter
 try:
-    args = getResolvedOptions(sys.argv, ["JOB_NAME", "BUCKET"])
-    BUCKET = args["BUCKET"]
-except Exception:
-    # Fallback: try to get from optional args or use default
-    args = getResolvedOptions(sys.argv, ["JOB_NAME"])
-    # Replace 'your-default-bucket-name' with your actual bucket name
-    BUCKET = "your-default-bucket-name"
-    print(f"Using default bucket: {BUCKET}")
+    from awsglue.context import GlueContext
+    from awsglue.utils import getResolvedOptions
+    from awsglue.job import Job
+    LOCAL_GLUE_RUNTIME = False
+except ModuleNotFoundError as exc:
+    if exc.name != "awsglue":
+        raise
+
+    LOCAL_GLUE_RUNTIME = True
+
+    class GlueContext:
+        def __init__(self, spark_context):
+            self.spark_context = spark_context
+
+    class Job:
+        def __init__(self, glue_context):
+            self.glue_context = glue_context
+
+        def init(self, *_args, **_kwargs):
+            return None
+
+        def commit(self):
+            return None
+
+    def getResolvedOptions(argv, options):
+        parser = argparse.ArgumentParser(
+            description="Run the Silver Glue job outside the managed AWS Glue runtime."
+        )
+        parser.add_argument("--JOB_NAME", default="silver_job_local")
+        parser.add_argument("--BUCKET")
+        known_args, _ = parser.parse_known_args(argv[1:])
+        values = vars(known_args)
+        missing = [name for name in options if not values.get(name)]
+        if missing:
+            parser.error(f"missing required arguments: {', '.join(f'--{name}' for name in missing)}")
+        return {name: values[name] for name in options}
+
+try:
+    from pyspark.sql import SparkSession
+
+except ModuleNotFoundError as exc:
+    if exc.name != "pyspark":
+        raise
+    raise SystemExit(
+        "pyspark is not installed in this environment. "
+        "Run this job in the AWS Glue Docker image or install a compatible Spark runtime first."
+    ) from exc
+
+
+# Get job arguments
+args = getResolvedOptions(sys.argv, ["JOB_NAME", "BUCKET"])
+BUCKET = args["BUCKET"]
+
+if LOCAL_GLUE_RUNTIME:
+    print("INFO: awsglue is unavailable; using local stubs. Pass --JOB_NAME/--BUCKET explicitly when running outside AWS Glue.")
 
 # CRITICAL: Configure Spark with Iceberg extensions (same as Bronze job)
 spark = SparkSession.builder \
@@ -50,32 +91,14 @@ try:
     bronze_df = spark.table(f"glue_catalog.{BRONZE_DB}.{BRONZE_TABLE}")
     print(f"DEBUG: Bronze record count = {bronze_df.count()}")
     
-    # 2) Compute metrics
-    # Example: turnover_ratio = qty_on_hand / (some business-logic window)
-    # days_until_stockout = qty_on_hand / avg_daily_usage
-    # Here we approximate avg_daily_usage via a 7-day window:
-    window7 = Window.partitionBy("product_id").orderBy("load_dt").rowsBetween(-6, 0)
-    
-    with_usage = bronze_df.withColumn("avg_daily_usage",
-        F.round(F.avg("qty_on_hand").over(window7), 2))
-    
-    silver_df = with_usage \
-        .withColumn("days_until_stockout",
-            F.when(F.col("avg_daily_usage") > 0,
-                F.round(F.col("qty_on_hand") / F.col("avg_daily_usage"), 2))
-            .otherwise(F.lit(None))) \
-        .withColumn("turnover_ratio",
-            F.when(F.col("days_until_stockout") > 0,
-                F.round(F.col("qty_on_hand") / F.col("days_until_stockout"), 2))
-            .otherwise(F.lit(None))) \
-        .withColumn("stock_status",
-            F.when(F.col("days_until_stockout") <= 7, "CRITICAL")
-            .when(F.col("days_until_stockout") <= 14, "LOW")
-            .when(F.col("days_until_stockout") <= 30, "MEDIUM")
-            .otherwise("HEALTHY")) \
-        .withColumn("reorder_flag",
-            F.when(F.col("days_until_stockout") <= 14, True)
-            .otherwise(False))
+   # 2) Keep Silver as a clean inventory snapshot table.
+    silver_df = bronze_df.select(
+        "product_id",
+        "warehouse_id",
+        "load_dt",
+        "qty_on_hand"
+    )
+
     
     print(f"DEBUG: After metrics count = {silver_df.count()}")
     
@@ -102,3 +125,4 @@ except Exception as e:
     raise e
 finally:
     job.commit()
+  

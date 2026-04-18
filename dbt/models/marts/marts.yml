@@ -1,0 +1,257 @@
+version: 2
+
+models:
+  - name: dim_product
+    description: "Product dimension table. Grain: one row per product_id."
+    columns:
+      - name: product_id
+        description: "Primary key for the product dimension."
+        tests:
+          - not_null
+          - unique
+
+      - name: product_name
+        description: "Human-readable product name."
+        tests:
+          - not_null
+
+      - name: category
+        description: "Product category."
+        tests:
+          - not_null
+
+  - name: dim_warehouse
+    description: "Warehouse dimension table. Grain: one row per warehouse_id."
+    columns:
+      - name: warehouse_id
+        description: "Primary key for the warehouse dimension."
+        tests:
+          - not_null
+          - unique
+
+      - name: warehouse_name
+        description: "Warehouse display name. Currently the same as warehouse_id."
+        tests:
+          - not_null
+
+  - name: dim_date
+    description: "Date dimension table. Grain: one row per date_day."
+    columns:
+      - name: date_day
+        description: "Primary key for the date dimension."
+        tests:
+          - not_null
+          - unique
+
+      - name: year_num
+        description: "Calendar year number."
+        tests:
+          - not_null
+
+      - name: quarter_num
+        description: "Calendar quarter number."
+        tests:
+          - not_null
+
+      - name: month_num
+        description: "Calendar month number."
+        tests:
+          - not_null
+
+      - name: month_name
+        description: "Calendar month name."
+        tests:
+          - not_null
+
+      - name: week_num
+        description: "Calendar week number."
+        tests:
+          - not_null
+
+      - name: day_of_month
+        description: "Day number within the month."
+        tests:
+          - not_null
+
+      - name: day_of_week_num
+        description: "Day-of-week number."
+        tests:
+          - not_null
+ 
+  - name: fct_inventory_risk
+    description: "Inventory risk fact table. Grain: one row per snapshot_date, product_id, warehouse_id."
+    columns:
+      - name: snapshot_date
+        description: "Foreign key to dim_date.date_day."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_day
+
+      - name: product_id
+        description: "Foreign key to dim_product.product_id."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_product')
+                field: product_id
+
+      - name: warehouse_id
+        description: "Foreign key to dim_warehouse.warehouse_id."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_warehouse')
+                field: warehouse_id
+
+      - name: qty_on_hand
+        description: "Current on-hand inventory quantity."
+        tests:
+          - not_null
+
+      - name: prev_qty_on_hand
+        description: "Previous snapshot quantity for the same product and warehouse."
+
+      - name: inventory_delta
+        description: "Change in quantity from the previous snapshot."
+
+      - name: daily_units_sold_proxy
+        description: "Proxy for units sold when inventory decreases."
+
+      - name: received_units
+        description: "Units received when inventory increases."
+
+      - name: avg_daily_usage_7d
+        description: "Rolling 7-snapshot average of daily units sold proxy."
+
+      - name: days_until_stockout
+        description: "Estimated days until stockout based on rolling usage."
+
+      - name: reorder_flag
+        description: "Flag indicating whether reorder is recommended."
+        tests:
+          - not_null
+
+      - name: stock_status
+        description: "Risk classification for inventory health."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['CRITICAL', 'LOW', 'MEDIUM', 'HEALTHY']
+
+  - name: rpt_inventory_risk_dashboard
+    description: "Denormalized reporting table for Athena and QuickSight dashboarding."
+    columns:
+      - name: warehouse_product_snapshot_key
+        description: "Unique reporting key for one product in one warehouse on one snapshot date."
+        tests:
+          - not_null
+          - unique
+
+      - name: snapshot_date
+        description: "Inventory snapshot date."
+        tests:
+          - not_null
+
+      - name: product_id
+        description: "Product SKU identifier."
+        tests:
+          - not_null
+
+      - name: product_name
+        description: "Human-readable product name."
+
+      - name: category
+        description: "Product category."
+
+      - name: warehouse_id
+        description: "Warehouse identifier."
+        tests:
+          - not_null
+
+      - name: warehouse_name
+        description: "Warehouse display name."
+
+      - name: qty_on_hand
+        description: "Current on-hand inventory quantity."
+
+      - name: avg_daily_usage_7d
+        description: "Rolling 7-snapshot average usage proxy."
+
+      - name: days_until_stockout
+        description: "Estimated days until stockout."
+
+      - name: reorder_flag
+        description: "Flag indicating whether reorder is recommended."
+        tests:
+          - not_null
+
+      - name: stock_status
+        description: "Inventory risk classification."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['CRITICAL', 'LOW', 'MEDIUM', 'HEALTHY']
+
+      - name: stock_status_sort_order
+        description: "Numeric sort order for stock status in BI tools."
+        tests:
+          - not_null
+
+      - name: is_latest_snapshot
+        description: "True when the row belongs to the most recent available snapshot date."
+        tests:
+          - not_null
+
+      - name: at_risk_flag
+        description: "True for CRITICAL and LOW inventory positions."
+        tests:
+          - not_null
+
+      - name: zero_inventory_flag
+        description: "True when on-hand inventory is zero."
+        tests:
+          - not_null
+
+      - name: stockout_event_flag
+        description: "True when inventory moved from a positive quantity to zero on the current snapshot."
+        tests:
+          - not_null
+
+      - name: replenishment_event_flag
+        description: "True when units were received on the current snapshot."
+        tests:
+          - not_null
+
+      - name: stockout_horizon_bucket
+        description: "Bucketed days-until-stockout label for dashboard filtering and grouping."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['0-3 days', '4-7 days', '8-14 days', '15-30 days', '31+ days', 'No usage signal']
+
+      - name: risk_priority_score
+        description: "Numeric urgency score used to rank the most important inventory risks."
+        tests:
+          - not_null
+
+      - name: risk_priority_band
+        description: "Priority label derived from the risk priority score."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['P1 - Immediate', 'P2 - Urgent', 'P3 - Watch', 'P4 - Healthy']
+
+      - name: latest_rank_overall
+        description: "Priority rank across the latest snapshot only; null for historical rows."
+
+      - name: latest_rank_in_warehouse
+        description: "Priority rank within each warehouse for the latest snapshot only; null for historical rows."

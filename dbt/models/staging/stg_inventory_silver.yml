@@ -2,29 +2,24 @@ version: 2
 
 models:
   - name: stg_inventory_silver
-    description: "Staging model for Silver inventory data, cleaned and typed for analytics."
+    description: "Staging model for the Glue Silver inventory snapshot table queried through Athena. Grain: one row per snapshot_date, product_id, warehouse_id."
     columns:
       - name: product_id
         description: "Product SKU identifier."
         tests:
           - not_null
+
       - name: warehouse_id
         description: "Warehouse identifier."
         tests:
           - not_null
+
       - name: snapshot_date
-        description: "Snapshot date for inventory metrics."
+        description: "Inventory snapshot date."
         tests:
           - not_null
+
       - name: qty_on_hand
-        description: "Current on-hand quantity."
-      - name: avg_daily_usage
-        description: "Average daily usage of the SKU."
-      - name: days_until_stockout
-        description: "Projected days until stockout."
-      - name: turnover_ratio
-        description: "Inventory turnover ratio."
-      - name: reorder_flag
-        description: "Flag indicating whether reorder is required."
-      - name: stock_status
-        description: "Status label (e.g., CRITICAL, HEALTHY, etc.)."
+        description: "Current on-hand quantity for the SKU in the warehouse snapshot."
+        tests:
+          - not_null

@@ -1,12 +1,13 @@
 version: 2
 
 sources:
-  - name: skusense_silver      # logical name inside dbt
-    database: SKUSENSE     # your Snowflake DB
-    schema: ANALYTICS             # your Snowflake SCHEMA
+  - name: skusense_silver
+    description: "Glue Catalog Iceberg Silver inventory snapshot table queried through Athena."
+    database: awsdatacatalog
+    schema: skusense_silver_db
     tables:
-      - name: INVENTORY_SILVER_VW # your external table name
-        description: "Clean Silver layer inventory view from the ICEBERG-backed external table"
+      - name: inventory_silver
+        description: "Clean Silver inventory snapshot table produced by Glue."
         columns:
           - name: product_id
             description: "Product SKU identifier."
@@ -17,16 +18,8 @@ sources:
             tests:
               - not_null
           - name: load_dt
-            description: "Data load date."
+            description: "Snapshot load date from the Glue Silver layer."
             tests:
               - not_null
           - name: qty_on_hand
-            descripttion: "Current inventory level"
-          - name: avg_daily_usage
-            description: "Average daily usage of the product."
-          - name: reorder_flag
-            description: "Flag indicating if the product needs to be reordered."
-          - name: stock_status
-            description: "Status of the stock (e.g., in stock, out of stock)."
-            
-          # add more important columns with tests as you go
+            description: "Current on-hand quantity for the product in the warehouse snapshot."

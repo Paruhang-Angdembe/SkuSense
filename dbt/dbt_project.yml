@@ -15,8 +15,10 @@ target-path: "target"
 clean-targets: ["target", "dbt_packages"]
 
 models:
-  skusense_dbt:
+  skusense:
     staging:
       +materialized: view
+    intermediate:
+      +materlialized: view
     marts:
       +materialized: table
