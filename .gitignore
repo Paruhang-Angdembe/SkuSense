@@ -1,19 +1,41 @@
-# Terraform cache & state
-**/.terraform/*
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDEs
+.vscode/
+.idea/
+
+# Terraform
+.terraform/
 *.tfstate
-*.tfstate.backup
+*.tfstate.*
 tfplan
+terraform.tfstate.d/
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
 .terraform.lock.hcl
 
-# Python venv
-.venv/
-__pycache__/
-*.pyc
-
-# dbt (local / generated)
-dbt/profiles.yml
+# dbt
+target/
+dbt_packages/
+logs/
 dbt/target/
 dbt/logs/
 
-# Project logs
-logs/
+# OS / misc
+Thumbs.db

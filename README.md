@@ -86,15 +86,15 @@ SkuSense models inventory as a time-series warehouse dataset, enabling:
 ---
 
 ## 🔗 Lineage Graph
-![Lineage Graph](image-3.png)
+![Lineage Graph](dashboard/image-3.png)
 
 ## 📊 Dashboard (QuickSight)
 
-![Dashboard](dashboard.png)
+![Dashboard](dashboard/dashboard.png)
 
 ### KPI Overview
 
-![alt text](kpi.png)
+![alt text](dashboard/kpi.png)
 
 - Critical SKUs
 - Low Stock SKUs
@@ -104,15 +104,15 @@ SkuSense models inventory as a time-series warehouse dataset, enabling:
 ### Visualizations
 
 - **Risk Trend Over Time**
-![alt text](image-1.png)
+![alt text](dashboard/image-1.png)
   - Tracks number of critical and low-stock SKUs daily
 
 - **Warehouse Risk Distribution**
-![alt text](image.png)
+![alt text](dashboard/image.png)
   - Compares inventory risk across warehouses
 
 - **Top Products at Risk**
-![alt text](image-2.png)
+![alt text](dashboard/image-2.png)
   - Highlights products with lowest days until stockout
 
 ### Filters
