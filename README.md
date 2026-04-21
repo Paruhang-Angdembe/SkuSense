@@ -1,8 +1,7 @@
 # SkuSense - Inventory Risk Analytics Platform (AWS-Native)
 
-Identify stockout risk across warehouses using a fully serverless data platform
+An analytics system that identifies stockout risk across warehouses and supports inventory prioritization decisions.
 
-An end-to-end AWS-native analytics system that transforms raw inventory snapshots into warehouse-level stockout risk insights, modeled using dbt and visualized through a QuickSight dashboard.
 
 ## 🎯 Problem
 Inventory stockouts lead to:
@@ -122,6 +121,58 @@ SkuSense models inventory as a time-series warehouse dataset, enabling:
 
 ---
 
+
+## Case Study: Inventory Risk Analysis
+### Scenario
+Assuming this dashboard is used by a supply chain team responsible for monitoring inventory health across multiple warehouses.
+
+The goal is to identify which products are at risk of stockout and prioritize replenishment decisions.
+---
+
+### Key Observations
+- 26 SKUs are in a **Critical state** (<= 7 days until stockout)
+- 45 SKUs are in a **Low stock state** (<= 14 days until stockout)
+- 4 warehouses currently contain at least one critical SKU
+- Average days until stockout across all SKUs is **14 days**
+- The number of low stock SKUs remains consistently higher than critical SKUs
+- Inventory risk does not significantly decrease over time
+
+This suggests that replenishment is not fully keeping up with ongoing demand.
+---
+
+### Root Cause Analysis
+The observed risk patterns suggest:
+- High turnover products are depleting faster than they are replenished
+- Replenishment cycles may be static and not responsive to demand changes
+- Inventory distribution across warehouses may be uneven
+- Demand variability is not being fully accounted for in current inventory planning
+
+### Recommended Actions
+#### Immediate (0-7 days)
+- Prioritize replenishment for SKUs with <= 7 days until stockout
+- Focus on products with the lowest days remaining to prevent immediate stockouts
+
+#### Short-Term (7-14 days)
+- Monitor low-stock SKUs closely to prevent them from becoming critical
+- Adjust reorder threshold dynamically based on recent demand trends
+
+#### Warehouse-Level Actions
+- Investigate warehouses with consistently higher risk (e.g., WH02)
+- Rebalance inventory by transferring stock from lower-risk warehouses if possible
+
+#### Strategic Improvements
+- Introduce demand-aware replenishment logic insted of static thresholds
+- Incorporate supplier lead times into stockout risk calculations
+- Improve forecasting for high-variability products
+
+### Limitations 
+- The dataset is synthetic and may not capture real-world anomalies
+- Assumes consistent inventory update frequency across all warehouses
+- Does not account for external factors such as supplier delays or sudden demand spikes
+
+Overall, the system highlights where inventory decisions should be prioritized, enabling faster response to stockout risks rather than relying on static inventory monitoring.
+---
+
 ## 🧠 Analytics Logic (dbt)
 
 All business logic is implemented in SQL using dbt:
@@ -167,21 +218,25 @@ Implemented using dbt tests:
 cd infra
 terraform init
 terraform apply
-** Upload Data **
+```
+
+### 2. Upload Sample Data to S3 
 aws s3 cp sample_data/ s3://<your-bucket>/raw/ --recursive
 
-** Run Pipeline **
+### 3. Run the Bronze -> Silver Pipeline 
 aws stepfunctions start-execution \
   --state-machine-arn <state-machine-arn> \
-  --input '{}'
+  --input '{"BUCKET":"<your-bucket>"}'
 
-** Build Warehouse Models **
+### 4. Build the Analytics Layer
 cd dbt
 dbt run
 dbt test
 
-** Query via Athena/Visualize in QuickSight
-```
+** Query via Athena/Visualize in QuickSight. **
+** Connect QuickSight to the modeled Athena tables for Dashboarding **
+
+
 ---
 ## 📌 Key Learnings
 -	Importance of data grain correctness in analytics systems
@@ -197,4 +252,7 @@ This project demonstrates:
 	-	BI/Reporting (QuickSight dashboard)
 	-	End-to-end data product thinking
 ---
-Built By Paruhang Angdembe :)
+
+Built By Paruhang Angdembe 
+
+
